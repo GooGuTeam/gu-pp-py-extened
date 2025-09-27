@@ -103,26 +103,27 @@ class SpeedEvaluator:
         
         # 确定节奏计算的起始点
         while (rhythm_start < historical_note_count - 2):
-            prev_obj = current.previous(rhythm_start)
-            prev_start_time = prev_obj.start_time if prev_obj is not None else 0
-            if current.start_time - prev_start_time < HISTORY_TIME_MAX:
-                rhythm_start += 1
-            else:
+            prev = current.previous(rhythm_start)
+            if prev is None or current.start_time - prev.start_time >= HISTORY_TIME_MAX:
                 break
+            rhythm_start += 1
         
         # 反向遍历历史物件计算节奏复杂度
         for i in range(rhythm_start, 0, -1):
             curr_obj = current.previous(i - 1)
             prev_obj = current.previous(i)
             last_obj = current.previous(i + 1)
-            curr_start_time = curr_obj.start_time if curr_obj is not None else 0
-            prev_start_time = prev_obj.start_time if prev_obj is not None else 0
-            last_start_time = last_obj.start_time if last_obj is not None else 0
-            curr_historical_decay = (HISTORY_TIME_MAX - (current.start_time - curr_start_time)) / HISTORY_TIME_MAX
+            
+            # 如果任一对象为None，跳过此次循环
+            if curr_obj is None or prev_obj is None or last_obj is None:
+                continue
+            
+            curr_historical_decay = (HISTORY_TIME_MAX - (current.start_time - curr_obj.start_time)) / HISTORY_TIME_MAX
             curr_historical_decay = min((historical_note_count - i) / historical_note_count, curr_historical_decay)
-            curr_delta = curr_obj.strain_time if curr_obj is not None else 0
-            prev_delta = prev_obj.strain_time if prev_obj is not None else 0
-            last_delta = last_obj.strain_time if last_obj is not None else 0
+            
+            curr_delta = getattr(curr_obj, 'strain_time', 0)
+            prev_delta = getattr(prev_obj, 'strain_time', 0)
+            last_delta = getattr(last_obj, 'strain_time', 0)
             
             # 计算节奏比率
             curr_ratio = 1.0 + 6.0 * min(0.5, math.pow(
@@ -141,10 +142,10 @@ class SpeedEvaluator:
                         island_size += 1
                 else:
                     # 根据物件类型应用惩罚
-                    if curr_obj is not None and hasattr(curr_obj, 'base_object') and hasattr(curr_obj.base_object, '__class__') and 'Slider' in curr_obj.base_object.__class__.__name__:
+                    if curr_obj is not None and hasattr(curr_obj, 'base_object') and curr_obj.base_object is not None and hasattr(curr_obj.base_object, '__class__') and 'Slider' in curr_obj.base_object.__class__.__name__:
                         effective_ratio *= 0.125  # BPM变化到滑条，这是简单的acc窗口
                     
-                    if prev_obj is not None and hasattr(prev_obj, 'base_object') and hasattr(prev_obj.base_object, '__class__') and 'Slider' in prev_obj.base_object.__class__.__name__:
+                    if prev_obj is not None and hasattr(prev_obj, 'base_object') and prev_obj.base_object is not None and hasattr(prev_obj.base_object, '__class__') and 'Slider' in prev_obj.base_object.__class__.__name__:
                         effective_ratio *= 0.25  # BPM变化来自滑条，这通常比circle->circle简单
                     
                     if previous_island_size == island_size:
