@@ -1,0 +1,3 @@
+"""
+Tau mode implementation.
+"""

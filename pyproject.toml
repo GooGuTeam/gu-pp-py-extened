@@ -1,0 +1,12 @@
+[project]
+name = "gu-pp-py-extended"
+version = "0.1.0"
+description = "PP and star calculation for more osu! rulesets"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "osupyparser",
+]
+
+[tool.uv.sources]
+osupyparser = { git = "https://github.com/mingxuangame/osupyparser" }
