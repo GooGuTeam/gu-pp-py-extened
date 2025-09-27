@@ -211,18 +211,37 @@ class HitObject:
 
 
 class TauHitObject(HitObject):
+    @property
+    def angle(self) -> float:
+        return getattr(self, '_angle', 0.0)
+
+    @angle.setter
+    def angle(self, value: float):
+        self._angle = value
+
+    def get_offset_angle(self) -> float:
+        return 0.0
+
+    @property
+    def range(self) -> float:
+        return getattr(self, '_range', 0.0)
+
+    @range.setter
+    def range(self, value: float):
+        self._range = value
     """Tau游戏基础物件"""
     
     def __init__(self):
         super().__init__()
         self.time_preempt: float = 600
-        self.time_fade_in: float = 100
+        self.time_fade_in: float = 400
         self.new_combo: bool = False
         self.combo_offset: int = 0
         self.index_in_current_combo: int = 0
         self.combo_index: int = 0
         self.combo_index_with_offsets: int = 0
         self.last_in_combo: bool = False
+        self.start_time: float = 0.0  # 补充 start_time 属性
 
 
 class AngledTauHitObject(TauHitObject, IHasAngle):
@@ -231,6 +250,9 @@ class AngledTauHitObject(TauHitObject, IHasAngle):
     def __init__(self):
         super().__init__()
         self._angle: float = 0.0
+        self.angle_range: float = 0.0
+        self.path = None  # 补充 path 属性，滑条相关
+        self.duration: float = 0.0  # 补充 duration 属性
     
     @property
     def angle(self) -> float:
@@ -276,6 +298,8 @@ class Slider(AngledTauHitObject, IHasOffsetAngle):
         self.repeat_count: int = 0
         self.node_samples: List[List[HitSampleInfo]] = []
         self._span_duration: float = 0
+        self.nested_hit_objects: List[HitObject] = []
+    # self.duration: float = 0.0  # 移除重复声明，避免与 @property 冲突
     
     @property
     def duration(self) -> float:
