@@ -10,6 +10,7 @@ from ..hold import Hold, HoldHead
 from ..touch import Touch
 from ..slide import Slide, SlideBody, SlideCheckpoint, CheckpointNode, SlideTap
 from ..beatmap import SentakkiBeatmap
+from .preprocessing.sentakkiDifficultyHitObject import SentakkiDifficultyHitObject
 
 
 class SentakkiDifficultyCalculator:

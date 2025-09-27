@@ -6,7 +6,7 @@ import math
 from typing import List, TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from ...objects import SentakkiHitObject
+    from ...core import SentakkiHitObject
 
 
 class SentakkiDifficultyHitObject:
