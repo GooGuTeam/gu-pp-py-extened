@@ -1,3 +1,0 @@
-"""
-Tau PP Python Implementation
-"""
