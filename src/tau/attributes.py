@@ -2,8 +2,8 @@
 Tau谱面属性和难度属性定义
 """
 
-from typing import Optional
-from dataclasses import dataclass
+from typing import Optional, List, Any
+from dataclasses import dataclass, field
 from .objects import TauHitObject
 from .mods import TauMods, calculate_hit_windows
 
@@ -42,33 +42,24 @@ class HitWindows:
 
 @dataclass
 class TauDifficultyAttributes:
-    """
-    Tau游戏模式的难度属性，对应taulazer/tau项目中的TauDifficultyAttributes类
-    """
-    # 难度星级
+    """Tau难度属性"""
     star_rating: float = 0.0
-    
-    # 各项难度分解
     aim_difficulty: float = 0.0
     speed_difficulty: float = 0.0
     complexity_difficulty: float = 0.0
-    
-    # 谱面属性（考虑了mod影响）
     approach_rate: float = 5.0
     overall_difficulty: float = 5.0
     drain_rate: float = 5.0
-    
-    # 滑条因子（表示滑条在aim难度中的占比）
     slider_factor: float = 1.0
-    
-    # 谱面统计信息
     notes_count: int = 0
     slider_count: int = 0
     hard_beat_count: int = 0
-    
-    # 最大combo数
     max_combo: int = 0
-
+    mods: List[Any] = field(default_factory=list)
+    
+    def __post_init__(self):
+        if self.mods is None:
+            self.mods = []
 
 class BeatmapAttributesBuilder:
     """

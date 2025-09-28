@@ -47,6 +47,7 @@ class TauMods(IntFlag):
     EASY = 1 << 1  # EZ
     HALF_TIME = 1 << 8  # HT
     DAYCORE = 1 << 11  # DC
+    NO_FAIL = 1 << 0  # NF
     
     # Difficulty Increasing Mods
     HARD_ROCK = 1 << 4  # HR

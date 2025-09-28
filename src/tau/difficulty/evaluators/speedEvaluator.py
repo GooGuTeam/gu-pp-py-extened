@@ -36,10 +36,9 @@ class SpeedEvaluator:
         speed_window_ratio = strain_time / great_window_full
         
         # 优化节奏模式（快速连续双击与大的时间间隔）
-        if current.index > 0:
-            prev_obj = current.previous(0)
-            if prev_obj and strain_time < great_window_full and prev_obj.strain_time > strain_time:
-                strain_time = prev_obj.strain_time + (strain_time - prev_obj.strain_time) * speed_window_ratio
+        prev_obj = current.previous(0) if current.index > 0 else None
+        if prev_obj and strain_time < great_window_full and prev_obj.strain_time > strain_time:
+            strain_time = prev_obj.strain_time + (strain_time - prev_obj.strain_time) * speed_window_ratio
         
         # 将时间间隔限制在OD 300判定窗口内
         # 0.93确保260bpm OD8的流不会被过度削弱，而0.92限制了上限的影响

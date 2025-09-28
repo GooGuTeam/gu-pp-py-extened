@@ -11,6 +11,7 @@ from ..touch import Touch
 from ..slide import Slide, SlideBody, SlideCheckpoint, CheckpointNode, SlideTap
 from ..beatmap import SentakkiBeatmap
 from .preprocessing.sentakkiDifficultyHitObject import SentakkiDifficultyHitObject
+from .sentakkiDifficultyAttributes import SentakkiDifficultyAttributes
 
 
 class SentakkiDifficultyCalculator:
@@ -28,20 +29,17 @@ class SentakkiDifficultyCalculator:
         self.mods = mods
         self.difficulty_multiplier = 0.0675  # 默认难度倍率
     
-    def calculate(self) -> dict:
+    def calculate(self) -> SentakkiDifficultyAttributes:
         """
         计算谱面难度
         
         Returns:
-            dict: 难度属性
+            SentakkiDifficultyAttributes: 难度属性
         """
-        if len(self.beatmap.hit_objects) == 0:
-            return self._create_empty_difficulty_attributes()
+        max_combo = self._get_max_combo()
+        clock_rate = self._get_clock_rate()
         
-        # 创建难度击打物件
-        difficulty_hit_objects = self._create_difficulty_hit_objects()
-        
-        # 简化的难度计算（基于物件密度和类型）
+        # 基于物件密度计算难度
         note_density = self._calculate_note_density()
         type_complexity = self._calculate_type_complexity()
         
@@ -64,26 +62,15 @@ class SentakkiDifficultyCalculator:
         if base_performance > 0.00001:
             star_rating = math.pow(1.12, 1/3) * 0.027 * (math.pow(100000 / math.pow(2, 1 / 1.1) * base_performance, 1/3) + 4)
         
-        # 统计物件数量
-        tap_count = sum(1 for obj in self.beatmap.hit_objects if isinstance(obj, Tap))
-        hold_count = sum(1 for obj in self.beatmap.hit_objects if isinstance(obj, Hold))
-        touch_count = sum(1 for obj in self.beatmap.hit_objects if isinstance(obj, Touch))
-        slide_count = sum(1 for obj in self.beatmap.hit_objects if isinstance(obj, Slide))
+        # 基础星级评分乘以时钟速率
+        base_sr = star_rating * clock_rate
         
-        return {
-            'star_rating': star_rating,
-            'aim_difficulty': aim_difficulty,
-            'speed_difficulty': speed_difficulty,
-            'complexity_difficulty': complexity_difficulty,
-            'approach_rate': self.beatmap.difficulty_attributes.get('approach_rate', 5.0),
-            'overall_difficulty': self.beatmap.difficulty_attributes.get('overall_difficulty', 5.0),
-            'drain_rate': self.beatmap.difficulty_attributes.get('drain_rate', 5.0),
-            'tap_count': tap_count,
-            'hold_count': hold_count,
-            'touch_count': touch_count,
-            'slide_count': slide_count,
-            'max_combo': self._get_max_combo()
-        }
+        # 创建难度属性对象
+        attributes = SentakkiDifficultyAttributes()
+        attributes.star_rating = base_sr * 1.25  # 转换谱面的星级评分膨胀，鼓励玩家尝试较低难度
+        attributes.max_combo = max_combo
+        
+        return attributes
     
     def _create_difficulty_hit_objects(self) -> List['SentakkiDifficultyHitObject']:
         """
@@ -203,24 +190,14 @@ class SentakkiDifficultyCalculator:
         
         return max_combo
     
-    def _create_empty_difficulty_attributes(self) -> dict:
+    def _create_empty_difficulty_attributes(self) -> SentakkiDifficultyAttributes:
         """
         创建空的难度属性
         
         Returns:
-            dict: 空的难度属性
+            SentakkiDifficultyAttributes: 空的难度属性
         """
-        return {
-            'star_rating': 0.0,
-            'aim_difficulty': 0.0,
-            'speed_difficulty': 0.0,
-            'complexity_difficulty': 0.0,
-            'approach_rate': 5.0,
-            'overall_difficulty': 5.0,
-            'drain_rate': 5.0,
-            'tap_count': 0,
-            'hold_count': 0,
-            'touch_count': 0,
-            'slide_count': 0,
-            'max_combo': 0
-        }
+        attributes = SentakkiDifficultyAttributes()
+        attributes.star_rating = 0.0
+        attributes.max_combo = 0
+        return attributes

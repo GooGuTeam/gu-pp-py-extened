@@ -49,6 +49,10 @@ class TauDifficultyHitObject:
         Returns:
             Optional[TauDifficultyHitObject]: 前一个物件或 None
         """
-        if self.index - backwards_index < 0:
+        try:
+            target_index = self.index - backwards_index
+            if target_index < 0:
+                return None
+            return self.objects[target_index]
+        except IndexError:
             return None
-        return self.objects[self.index - backwards_index]
