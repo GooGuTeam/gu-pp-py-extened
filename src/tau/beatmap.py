@@ -27,6 +27,8 @@ class TauBeatmap:
             'circle_size': 5.0,
             'drain_rate': 5.0
         }
+        self.timing_points: List[Any] = []  # 存储时间点信息
+        self.file_version: int = 0  # 文件版本
     
     def get_statistics(self) -> List[BeatmapStatistics]:
         """
