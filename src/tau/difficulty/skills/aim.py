@@ -61,11 +61,19 @@ class Aim(TauStrainSkill):
             float: 难度值
         """
         velocity = self._calculate_velocity(current.distance, current.strain_time)
-        
-        # 检查是否允许Slider类型但上一个物件不是Slider
-        slider_allowed = any(issubclass(t, type(current.base_object)) for t in self.allowed_hit_objects if hasattr(t, '__name__') and t.__name__ == 'Slider')
-        last_is_not_slider = not isinstance(last.base_object, type(current.base_object).__bases__[0]) if hasattr(type(current.base_object).__bases__[0], '__name__') and type(current.base_object).__bases__[0].__name__ == 'Slider' else True
-        
+
+        # Determine if sliders are allowed by checking class names in allowed_hit_objects
+        slider_allowed = any(hasattr(t, '__name__') and 'Slider' in t.__name__ for t in self.allowed_hit_objects)
+
+        # Check whether the last object's base_object is a slider by class name
+        last_is_not_slider = True
+        try:
+            last_base = getattr(last, 'base_object', None)
+            if last_base is not None and hasattr(last_base, '__class__') and hasattr(last_base.__class__, '__name__'):
+                last_is_not_slider = not ('Slider' in last_base.__class__.__name__)
+        except Exception:
+            last_is_not_slider = True
+
         if slider_allowed and last_is_not_slider:
             return velocity
         

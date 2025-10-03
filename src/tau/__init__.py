@@ -14,7 +14,7 @@ from .difficulty.difficultyCalculator import TauDifficultyCalculator
 from .performance import TauPerformanceCalculator, TauPerformanceAttributes
 
 # 转换器相关
-from .convertor import convert_osu_file
+from .convertor import convert_osu_beatmap
 
 __all__ = [
     # 基础类
@@ -38,5 +38,5 @@ __all__ = [
     "TauPerformanceAttributes",
     
     # 转换器
-    "convert_osu_file"
+    "convert_osu_beatmap"
 ]

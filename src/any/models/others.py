@@ -2,8 +2,15 @@ from enum import Enum
 
 
 class Pos:
-    x: int
-    y: int
+    x: float
+    y: float
+
+    def __init__(self, x: float = 0.0, y: float = 0.0) -> None:
+        self.x = x
+        self.y = y
+    
+    def __repr__(self):
+        return f"Pos(x={self.x}, y={self.y})"
 
 class HitSound(int,Enum):
     Normal=0

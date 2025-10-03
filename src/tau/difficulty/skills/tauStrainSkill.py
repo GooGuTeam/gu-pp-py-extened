@@ -27,6 +27,8 @@ class TauStrainSkill(ABC):
         self.current_strain = 0.0
         self.current_section_peak = 0.0
         self.strain_peaks = []
+        # track last section index so we can detect section changes reliably
+        self._last_section_index = -1
         
     def process(self, hit_object: TauDifficultyHitObject):
         """
@@ -73,7 +75,11 @@ class TauStrainSkill(ABC):
             bool: 是否是新的段落
         """
         # 默认每10秒为一个段落
-        return int(time / 10000) > int((time - 1) / 10000)
+        section_index = int(time / 10000)
+        if section_index != self._last_section_index:
+            self._last_section_index = section_index
+            return True
+        return False
     
     def _save_current_peak(self):
         """保存当前段落峰值"""

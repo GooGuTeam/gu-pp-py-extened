@@ -21,6 +21,8 @@ class Complexity(TauStrainSkill):
             mods: 应用的mods
         """
         super().__init__(mods)
+        # Use a persistent ComplexityEvaluator so history (mono patterns) is tracked across objects
+        self._evaluator = ComplexityEvaluator()
         self.skill_multiplier = 60
         self.strain_decay_base = 0.35
     
@@ -34,4 +36,5 @@ class Complexity(TauStrainSkill):
         Returns:
             float: 应变值
         """
-        return ComplexityEvaluator.evaluate_difficulty(current)
+        # Delegate to the persistent evaluator so mono history and repetition penalties accumulate
+        return self._evaluator._evaluate(current)
