@@ -1,176 +1,137 @@
-"""
-ComplexityEvaluator类，用于评估复杂度难度
+"""ComplexityEvaluator: 上游 C# ComplexityEvaluator 精确逻辑的 Python 对齐版本。
+
+上游 (taulazer/tau) 逻辑核心：
+  - 追踪 mono pattern（连续同类型 HitType 的长度）。
+  - 当出现 HitType 切换时，产生基础应变 object_strain = 1。
+  - 根据最近两个已结束 mono pattern 的长度奇偶性（总长度是否为偶数）给予 0.5/1.5 调整。
+  - 仅当历史 mono pattern 数>=2 时才给予任何应变（否则视为起始过渡忽略）。
+  - 对即将结束的 mono pattern 长度加入 mono_history（有限长度 5）。
+  - 检测最近 most_recent_patterns_to_compare=2 个 pattern 是否与历史早先某段重复，若重复，按距上次重复以来的 note 数 notesSince 施加 repetitionPenalty = min(1, 0.032 * notesSince)。可叠乘。
+
+差异说明：
+  - 本实现采用实例状态而非静态全局（线程/多计算器隔离）。
+  - 维持与 C# 结构等价的字段：previous_hit_type, current_mono_length, mono_history。
+  - 仅使用 HitType（Angled / HardBeat），按上游分类规则。
 """
 
-import math
-from collections import deque
+from typing import TYPE_CHECKING, Optional, List
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover - 类型提示
     from ..preprocessing.tauDifficultyHitObject import TauDifficultyHitObject
 
 
 class ComplexityEvaluator:
-    """复杂度评估器"""
-    
-    # 历史记录最大长度
-    MONO_HISTORY_MAX_LENGTH = 5
-    
+    mono_history_max_length = 5
+
     def __init__(self):
-        """初始化复杂度评估器"""
-        # 存储最近mono模式长度的队列，最新的值在队列末尾
-        self.mono_history = deque(maxlen=self.MONO_HISTORY_MAX_LENGTH)
-        
-        # 上一个击打物件的类型
-        self.previous_hit_type: Optional['HitType'] = None
-        
-        # 当前mono模式的长度
-        self.current_mono_length = 0
-    
-    def reset(self):  # 可用于单张谱面开始
-        self.mono_history.clear()
-        self.previous_hit_type = None
-        self.current_mono_length = 0
-    
-    @staticmethod
-    def evaluate_difficulty(current: 'TauDifficultyHitObject') -> float:
-        """
-        评估难度
-        
-        Args:
-            current: 当前难度击打物件
-            
-        Returns:
-            float: 难度值
-        """
-        evaluator = ComplexityEvaluator()
-        return evaluator._evaluate(current)
-    
-    def _evaluate(self, current: 'TauDifficultyHitObject') -> float:
-        """
-        评估难度（内部方法）
-        
-        Args:
-            current: 当前难度击打物件
-            
-        Returns:
-            float: 难度值
-        """
-        if current.delta_time >= 1000:
-            # 长时间间隔，重置历史记录
+        # 历史最近 mono pattern 长度（不含当前进行中的 pattern）
+        self.mono_history: List[int] = []
+        self.previous_hit_type: Optional[HitType] = None
+        self.current_mono_length: int = 0
+
+    # ---- 公共接口 ----
+    def evaluate_difficulty(self, current: 'TauDifficultyHitObject') -> float:
+        tau_current = current  # 命名对齐
+
+        # 长间隔 >=1000ms 视为节奏 / pattern 软重置
+        if getattr(tau_current, 'delta_time', 0) >= 1000:
             self.mono_history.clear()
-            
-            current_hit = current.base_object
-            self.current_mono_length = 1 if current_hit else 0
-            self.previous_hit_type = self._get_hit_type(current)
-        
+            self.current_mono_length = 1 if tau_current.base_object is not None else 0
+            self.previous_hit_type = self._get_hit_type(tau_current)
+            return 0.0
+
         object_strain = 0.0
-        
-        current_hit_type = self._get_hit_type(current)
-        if (self.previous_hit_type is not None and 
-            current_hit_type != self.previous_hit_type):
-            # 击打类型发生变化
+        curr_type = self._get_hit_type(tau_current)
+
+        if self.previous_hit_type is not None and curr_type != self.previous_hit_type:
+            # 进入新 mono pattern
             object_strain = 1.0
-            
-            # 检查历史记录长度
+
             if len(self.mono_history) < 2:
+                # 需要至少两个已完成 pattern 作为对比，否则不计入起始过渡难度
                 object_strain = 0.0
-            elif (self.mono_history[-1] + self.current_mono_length) % 2 == 0:
-                # 模式检查
-                object_strain = 0.0
-            
-            # 应用重复惩罚
+            else:
+                # (最后一个已完成 pattern 长度 + 当前未完成 pattern 长度) 的奇偶性调整
+                last_len = self.mono_history[-1] if self.mono_history else 0
+                if (last_len + self.current_mono_length) % 2 == 0:
+                    object_strain *= 0.5
+                else:
+                    object_strain *= 1.5
+
+            # 重复惩罚（实际上是降低重复收益）：先把当前结束的 mono pattern 加入历史再计算
             object_strain *= self._repetition_penalties()
+
+            # 新 pattern 开始（当前击打物件属于新类型，长度记 1）
             self.current_mono_length = 1
         else:
-            # 击打类型相同，增加当前mono长度
+            # 仍在同一 mono pattern 内
             self.current_mono_length += 1
-        
-        self.previous_hit_type = current_hit_type
+
+        self.previous_hit_type = curr_type
         return object_strain
-    
+
+    # ---- 内部：重复模式检测 ----
     def _repetition_penalties(self) -> float:
-        """
-        应用重复模式惩罚
-        
-        Returns:
-            float: 惩罚因子
-        """
         MOST_RECENT_PATTERNS_TO_COMPARE = 2
         penalty = 1.0
-        
-        self.mono_history.append(self.current_mono_length)
-        
-        # 检查历史模式是否重复
-        for start in range(len(self.mono_history) - MOST_RECENT_PATTERNS_TO_COMPARE - 1, -1, -1):
-            if self._is_same_pattern(start, MOST_RECENT_PATTERNS_TO_COMPARE):
-                notes_since = sum(self.mono_history[i] for i in range(start, len(self.mono_history)))
-                penalty *= self._repetition_penalty(notes_since)
-                break
-        
+
+        # 记录刚刚完成的 mono pattern 长度
+        self._enqueue_current_mono_length()
+
+        # 从最靠后的可比较起点向前找第一个重复
+        start_limit = len(self.mono_history) - MOST_RECENT_PATTERNS_TO_COMPARE - 1
+        for start in range(start_limit, -1, -1):
+            if not self._is_same_pattern(start, MOST_RECENT_PATTERNS_TO_COMPARE):
+                continue
+            # notesSince = 从重复起点到当前（含）所有 pattern 的总长度
+            notes_since = sum(self.mono_history[start:])
+            penalty *= self._repetition_penalty(notes_since)
+            break
+
         return penalty
-    
-    def _is_same_pattern(self, start: int, most_recent_patterns_to_compare: int) -> bool:
-        """
-        检查最近的模式是否在历史中重复
-        
-        Args:
-            start: 起始索引
-            most_recent_patterns_to_compare: 要比较的最近模式数量
-            
-        Returns:
-            bool: 是否相同模式
-        """
-        for i in range(most_recent_patterns_to_compare):
-            if (self.mono_history[start + i] != 
-                self.mono_history[len(self.mono_history) - most_recent_patterns_to_compare + i]):
+
+    def _enqueue_current_mono_length(self):
+        if self.current_mono_length <= 0:
+            return
+        self.mono_history.append(self.current_mono_length)
+        # 限制长度
+        overflow = len(self.mono_history) - self.mono_history_max_length
+        if overflow > 0:
+            del self.mono_history[0:overflow]
+
+    def _is_same_pattern(self, start: int, count: int) -> bool:
+        # 对比 mono_history[start : start+count] 与 mono_history[-count:]
+        tail = self.mono_history[-count:]
+        segment = self.mono_history[start:start + count]
+        if len(segment) != len(tail):
+            return False
+        for a, b in zip(segment, tail):
+            if a != b:
                 return False
         return True
-    
+
     def _repetition_penalty(self, notes_since: int) -> float:
-        """
-        计算模式重复的应变惩罚
-        
-        Args:
-            notes_since: 自上次重复模式以来的note数量
-            
-        Returns:
-            float: 惩罚值
-        """
         return min(1.0, 0.032 * notes_since)
-    
+
+    # ---- HitType 判定 ----
     def _get_hit_type(self, hit_object: 'TauDifficultyHitObject') -> 'HitType':
-        """
-        获取击打物件类型
-        
-        Args:
-            hit_object: 难度击打物件
-            
-        Returns:
-            HitType: 击打类型
-        """
         from ...objects import StrictHardBeat, SliderHardBeat, AngledTauHitObject, Slider
-        
         base_object = hit_object.base_object
-        
-        # 检查是否为StrictHardBeat
-        if isinstance(base_object, StrictHardBeat):
+        # 与上游相同的判定顺序
+        if base_object.__class__.__name__ == 'StrictHardBeat' or isinstance(base_object, StrictHardBeat):
             return HitType.HARD_BEAT
-
-        # 检查嵌套物件是否包含SliderHardBeat
-        if isinstance(base_object, Slider) and hasattr(base_object, 'nested_hit_objects') and base_object.nested_hit_objects:
-            if isinstance(base_object.nested_hit_objects[0], SliderHardBeat):
+        if isinstance(base_object, Slider) and getattr(base_object, 'nested_hit_objects', None):
+            first_nested = base_object.nested_hit_objects[0]
+            if isinstance(first_nested, SliderHardBeat):
                 return HitType.HARD_BEAT
-
-        # 检查是否为角度物件
         if isinstance(base_object, AngledTauHitObject):
             return HitType.ANGLED
-
         return HitType.HARD_BEAT
 
 
 class HitType(Enum):
-    """击打类型枚举"""
-    ANGLED = "Angled"
-    HARD_BEAT = "HardBeat"
+    ANGLED = 'Angled'
+    HARD_BEAT = 'HardBeat'
+
+__all__ = ["ComplexityEvaluator", "HitType"]

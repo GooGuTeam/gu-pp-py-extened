@@ -23,4 +23,5 @@ class Complexity(BaseStrainSkill):
         self._evaluator = ComplexityEvaluator()
 
     def strain_value_of(self, current: TauDifficultyHitObject) -> float:  # type: ignore[override]
+        # 使用深度对齐 evaluator；需保证顺序调用（calculator 已保证）
         return self._evaluator.evaluate_difficulty(current)

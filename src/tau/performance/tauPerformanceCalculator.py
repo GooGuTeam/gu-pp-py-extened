@@ -72,28 +72,31 @@ class TauPerformanceCalculator:
         """
         context = TauPerformanceContext(score, difficulty_attributes)
         context.effective_miss_count = self._calculate_effective_miss_count(context)
-        
-        # Mod multiplier
+
+        # 与上游：固定基础 multiplier 1.12
         multiplier = 1.12
-        
+
+        mods = score.get('mods', 0)
+
+        # 计算各面向（按 upstream 先算再统一聚合）
         aim_value = self._evaluate_aim_performance(context)
         speed_value = self._evaluate_speed_performance(context)
         accuracy_value = self._compute_accuracy(context)
         complexity_value = self._evaluate_complexity_performance(context)
-        
-        # NoFail mod影响
-        mods = score.get('mods', 0)
+        # 注意：Relax / Autopilot 已在难度层面把对应面向清零，这里不再重复强制归零，保持与上游一致。
+
+        # NoFail 惩罚（不低于 0.90）
         if mods & TauMods.NO_FAIL:
             multiplier *= max(0.90, 1.0 - 0.02 * context.effective_miss_count)
-        
+
         total_value = math.pow(
-            math.pow(aim_value, 1.1) + 
-            math.pow(accuracy_value, 1.1) + 
-            math.pow(speed_value, 1.1) + 
-            math.pow(complexity_value, 1.1),
+            math.pow(max(aim_value, 0.0), 1.1) +
+            math.pow(max(accuracy_value, 0.0), 1.1) +
+            math.pow(max(speed_value, 0.0), 1.1) +
+            math.pow(max(complexity_value, 0.0), 1.1),
             1.0 / 1.1
         ) * multiplier
-        
+
         return TauPerformanceAttributes(
             aim=aim_value,
             speed=speed_value,
@@ -153,17 +156,15 @@ class TauPerformanceCalculator:
         Returns:
             float: 有效失误计数
         """
-        # 从连击猜测失误数 + 滑条断连数
+        # 与上游：基于连击阈值推测 miss + slider 断连（不做 -1 修正）
         combo_based_miss_count = 0.0
-        
+
         if context.difficulty_attributes.slider_count > 0:
             full_combo_threshold = context.difficulty_attributes.max_combo - 0.1 * context.difficulty_attributes.slider_count
             if context.score_max_combo < full_combo_threshold:
                 combo_based_miss_count = full_combo_threshold / max(1.0, context.score_max_combo)
-        
-        # 限制失误计数，因为它来自连击，可能高于总击打数，这会破坏一些计算
+
         combo_based_miss_count = min(combo_based_miss_count, context.total_hits)
-        
         return max(context.count_miss, combo_based_miss_count)
     
     def _evaluate_aim_performance(self, context: TauPerformanceContext) -> float:
@@ -185,7 +186,7 @@ class TauPerformanceCalculator:
             (math.log10(context.total_hits / 2000.0) * 0.5 if context.total_hits > 2000 else 0.0)
         )
         aim_value *= length_bonus
-        
+        # 上游：再次乘以 length_bonus 与 AR 因子（双 length 奖励）
         aim_value *= self._compute_approach_rate_factor(context) * length_bonus
         
         # 通过评估相对于总物件数的失误数来惩罚失误。默认任何数量的失误都会减少3%。
@@ -208,22 +209,46 @@ class TauPerformanceCalculator:
         Returns:
             float: 速度性能值
         """
-        raw_speed = context.difficulty_attributes.speed_difficulty
+        attrs = context.difficulty_attributes
+        raw_speed = attrs.speed_difficulty
         speed_value = math.pow(5.0 * max(1.0, raw_speed / 0.0675) - 4.0, 3.0) / 100000.0
-        
-        # 对于超过2,000个击打物件的谱面，会增加长度奖励。
+
         length_bonus = (
-            0.95 + 0.4 * min(1.0, context.total_hits / 2000.0) + 
+            0.95 + 0.4 * min(1.0, context.total_hits / 2000.0) +
             (math.log10(context.total_hits / 2000.0) * 0.5 if context.total_hits > 2000 else 0.0)
         )
         speed_value *= length_bonus
-        
-        # 通过评估相对于总物件数的失误数来惩罚失误。默认任何数量的失误都会减少3%。
+
+        # miss 惩罚：speed 使用指数 0.875
         if context.effective_miss_count > 0:
-            speed_value *= 0.97 * math.pow(1 - math.pow(context.effective_miss_count / context.total_hits, 0.775), 
-                                           context.effective_miss_count)
-        
-        return speed_value * context.accuracy
+            speed_value *= 0.97 * math.pow(
+                1 - math.pow(context.effective_miss_count / context.total_hits, 0.775),
+                math.pow(context.effective_miss_count, 0.875)
+            )
+
+        # 连击缩放（与上游 getComboScalingFactor 等价实现）
+        if attrs.max_combo > 0 and context.score_max_combo > 0:
+            combo_factor = min(
+                math.pow(context.score_max_combo, 0.8) / math.pow(attrs.max_combo, 0.8),
+                1.0
+            )
+            speed_value *= combo_factor
+
+        # 高 AR 长谱加成（approachRateFactor * length_bonus）
+        approach_rate_factor = 0.0
+        if attrs.approach_rate > 10.33:
+            approach_rate_factor = 0.3 * (attrs.approach_rate - 10.33)
+        speed_value *= 1.0 + approach_rate_factor * length_bonus
+
+        # FadeIn 模式（若存在）提升对低 AR 的奖励：暂未实现（无该 mod 标志位）；如需请扩展 TauMods。
+
+        # 精确度与 OD 影响
+        speed_value *= (0.95 + math.pow(attrs.overall_difficulty, 2) / 750.0) * math.pow(
+            max(context.accuracy, 1e-9),
+            (14.5 - max(attrs.overall_difficulty, 8)) / 2
+        )
+
+        return speed_value
     
     def _evaluate_complexity_performance(self, context: TauPerformanceContext) -> float:
         """
@@ -238,19 +263,22 @@ class TauPerformanceCalculator:
         raw_complexity = context.difficulty_attributes.complexity_difficulty
         complexity_value = math.pow(5.0 * max(1.0, raw_complexity / 0.0675) - 4.0, 3.0) / 100000.0
         
-        # 对于超过2,000个击打物件的谱面，会增加长度奖励。
+        # 长度奖励
         length_bonus = (
-            0.95 + 0.4 * min(1.0, context.total_hits / 2000.0) + 
+            0.95 + 0.4 * min(1.0, context.total_hits / 2000.0) +
             (math.log10(context.total_hits / 2000.0) * 0.5 if context.total_hits > 2000 else 0.0)
         )
         complexity_value *= length_bonus
-        
-        # 通过评估相对于总物件数的失误数来惩罚失误。默认任何数量的失误都会减少3%。
+
+        # miss 惩罚（与上游相同，不带 0.875 指数）
         if context.effective_miss_count > 0:
-            complexity_value *= 0.97 * math.pow(1 - math.pow(context.effective_miss_count / context.total_hits, 0.775), 
-                                                context.effective_miss_count)
-        
-        return complexity_value * context.accuracy
+            complexity_value *= 0.97 * math.pow(
+                1 - math.pow(context.effective_miss_count / context.total_hits, 0.775),
+                context.effective_miss_count
+            )
+
+        # 不乘以 accuracy（上游无该项）
+        return complexity_value
     
     def _compute_approach_rate_factor(self, context: TauPerformanceContext) -> float:
         """

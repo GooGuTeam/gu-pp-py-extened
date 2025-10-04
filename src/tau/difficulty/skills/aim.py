@@ -39,8 +39,8 @@ class Aim(BaseStrainSkill):
         Returns:
             float: 应变值
         """
-        # 检查是否为TauAngledDifficultyHitObject且有前一个物件
-        if current.index <= 1 or not isinstance(current, TauAngledDifficultyHitObject) or current.last_angled is None:
+        # 需要至少一个前置角度物件（index 0 无法计算，index 1 已有前一个即可）
+        if current.index == 0 or not isinstance(current, TauAngledDifficultyHitObject) or current.last_angled is None:
             return 0
         
         # 如果距离小于角度范围，则返回0

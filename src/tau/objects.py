@@ -252,7 +252,9 @@ class AngledTauHitObject(TauHitObject, IHasAngle):
         self._angle: float = 0.0
         self.angle_range: float = 0.0
         self.path = None  # 补充 path 属性，滑条相关
-        self.duration: float = 0.0  # 补充 duration 属性
+        # 注意：Slider 子类定义了只读 property duration，不能在此写同名属性
+        # 使用内部占位字段以防需要（目前未直接使用）
+        self._base_duration = 0.0  # placeholder for non-slider angled objects
     
     @property
     def angle(self) -> float:
