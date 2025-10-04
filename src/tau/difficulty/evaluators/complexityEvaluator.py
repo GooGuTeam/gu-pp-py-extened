@@ -20,12 +20,17 @@ class ComplexityEvaluator:
     def __init__(self):
         """初始化复杂度评估器"""
         # 存储最近mono模式长度的队列，最新的值在队列末尾
-        self.mono_history = deque(maxlen=ComplexityEvaluator.MONO_HISTORY_MAX_LENGTH)
+        self.mono_history = deque(maxlen=self.MONO_HISTORY_MAX_LENGTH)
         
         # 上一个击打物件的类型
         self.previous_hit_type: Optional['HitType'] = None
         
         # 当前mono模式的长度
+        self.current_mono_length = 0
+    
+    def reset(self):  # 可用于单张谱面开始
+        self.mono_history.clear()
+        self.previous_hit_type = None
         self.current_mono_length = 0
     
     @staticmethod
