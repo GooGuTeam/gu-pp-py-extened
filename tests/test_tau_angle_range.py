@@ -1,7 +1,7 @@
 import math
 from tau.beatmap import TauBeatmap
 from tau.objects import Beat
-from tau.difficulty.calculator import TauDifficultyCalculatorV2
+from tau.difficulty import TauDifficultyCalculator
 
 
 def _make_map_with_angles(delta_angle: float):
@@ -22,8 +22,8 @@ def test_angle_range_gating_aim():
     # large final angle => delta from second (15) = 75 (> angle_range) => contributes
     large_map = _make_map_with_angles(90)
 
-    small_attrs = TauDifficultyCalculatorV2(small_map).calculate()
-    large_attrs = TauDifficultyCalculatorV2(large_map).calculate()
+    small_attrs = TauDifficultyCalculator(small_map).calculate()
+    large_attrs = TauDifficultyCalculator(large_map).calculate()
 
     # 断言大角度的 aim 难度应显著高于小角度 (小角度可被 gating 掉接近 0)
     # 大角度应该能产生非零 aim

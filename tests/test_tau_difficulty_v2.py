@@ -1,7 +1,7 @@
 import math
 from tau.beatmap import TauBeatmap
 from tau.objects import Beat, Slider, SliderNode, PolarSliderPath
-from tau.difficulty.calculator import TauDifficultyCalculatorV2
+from tau.difficulty import TauDifficultyCalculator
 
 
 def make_simple_map():
@@ -26,7 +26,7 @@ def make_simple_map():
 
 def test_v2_basic_attributes():
     bm = make_simple_map()
-    v2 = TauDifficultyCalculatorV2(bm).calculate()
+    v2 = TauDifficultyCalculator(bm).calculate()
 
     # star rating should be non-negative
     assert v2.star_rating >= 0

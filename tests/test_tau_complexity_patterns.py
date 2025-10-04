@@ -1,6 +1,6 @@
 from tau.beatmap import TauBeatmap
 from tau.objects import Beat
-from tau.difficulty.calculator import TauDifficultyCalculatorV2
+from tau.difficulty import TauDifficultyCalculator
 
 
 def _make_pattern_map(pattern_angles):
@@ -22,8 +22,8 @@ def test_complexity_alternating_higher():
     # 交替大跨度：0,70,10,80,... 制造不同 angle/rhythm bucket
     alternating = _make_pattern_map([70,10,80,15,90,20,100,25])
 
-    rep_attr = TauDifficultyCalculatorV2(repetitive).calculate()
-    alt_attr = TauDifficultyCalculatorV2(alternating).calculate()
+    rep_attr = TauDifficultyCalculator(repetitive).calculate()
+    alt_attr = TauDifficultyCalculator(alternating).calculate()
 
     # 交替应有更高 complexity
     assert alt_attr.complexity_difficulty >= rep_attr.complexity_difficulty

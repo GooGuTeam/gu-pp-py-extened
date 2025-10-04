@@ -1,24 +1,36 @@
-"""
-Tau游戏模式的Python实现
+"""Tau 游戏模式公共导出。
+
+集中整理对外 API，避免星号导入带来不稳定符号外泄。
 """
 
-from .attributes import TauDifficultyAttributes
+from .attributes import TauDifficultyAttributes, BeatmapAttributes, BeatmapAttributesBuilder, HitWindows
 from .beatmap import TauBeatmap
-from .objects import *
-from .mods import TauMods
-
-# 难度计算相关
-from .difficulty.difficultyCalculator import TauDifficultyCalculator
-
-# 性能计算相关
+from .objects import (
+    TauHitObject,
+    AngledTauHitObject,
+    Beat,
+    HardBeat,
+    StrictHardBeat,
+    Slider,
+    SliderHeadBeat,
+    SliderHardBeat,
+    SliderRepeat,
+    SliderTick,
+    PolarSliderPath,
+    SliderNode,
+)
+from .mods import TauMods, get_mod_score_multiplier, apply_mods_to_attributes, calculate_hit_windows
+from .difficulty import TauDifficultyCalculator  # re-export统一名字
 from .performance import TauPerformanceCalculator, TauPerformanceAttributes
-
-# 转换器相关
 from .convertor import convert_osu_beatmap
 
 __all__ = [
-    # 基础类
+    # 属性相关
     "TauDifficultyAttributes",
+    "BeatmapAttributes",
+    "BeatmapAttributesBuilder",
+    "HitWindows",
+    # 谱面与物件
     "TauBeatmap",
     "TauHitObject",
     "AngledTauHitObject",
@@ -26,17 +38,21 @@ __all__ = [
     "HardBeat",
     "StrictHardBeat",
     "Slider",
+    "SliderHeadBeat",
+    "SliderHardBeat",
+    "SliderRepeat",
+    "SliderTick",
     "PolarSliderPath",
     "SliderNode",
+    # Mods
     "TauMods",
-    
-    # 难度计算
+    "get_mod_score_multiplier",
+    "apply_mods_to_attributes",
+    "calculate_hit_windows",
+    # 计算器
     "TauDifficultyCalculator",
-    
-    # 性能计算
     "TauPerformanceCalculator",
     "TauPerformanceAttributes",
-    
-    # 转换器
-    "convert_osu_beatmap"
+    # 转换
+    "convert_osu_beatmap",
 ]

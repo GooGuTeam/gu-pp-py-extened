@@ -2,7 +2,7 @@
 
 演示步骤:
  1. 构建一个简单谱面 (Beat/HardBeat/StrictHardBeat)
- 2. 计算难度 (TauDifficultyCalculatorV2)
+ 2. 计算难度 (TauDifficultyCalculator)
  3. 构造一个成绩字典并计算 PP
 
 所需字段 (score):
@@ -12,7 +12,7 @@
 
 运行: python -m examples.tau_performance_example
 """
-from tau.difficulty.calculator import TauDifficultyCalculatorV2
+from tau.difficulty import TauDifficultyCalculator
 from tau.performance.tauPerformanceCalculator import TauPerformanceCalculator
 from tau.beatmap import TauBeatmap
 from tau.objects import Beat, HardBeat, StrictHardBeat
@@ -31,7 +31,7 @@ def build_map() -> TauBeatmap:
 
 def main():
     beatmap = build_map()
-    calc = TauDifficultyCalculatorV2(beatmap, mods=0)
+    calc = TauDifficultyCalculator(beatmap, mods=0)
     diff = calc.calculate()
 
     score = {

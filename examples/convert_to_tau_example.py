@@ -406,107 +406,15 @@ def main():
     print(f"  Hit object count: {len(tau_beatmap.hit_objects)}")
 
     # 计算难度属性（star/aim/speed/complexity等）
+    from tau.difficulty import TauDifficultyCalculator
     difficulty_calculator = TauDifficultyCalculator(tau_beatmap)
-    # 调试：先复用内部步骤以便查看每个技能的峰值和最终难度值
-    difficulty_hit_objects = difficulty_calculator._create_difficulty_hit_objects()
-    skills = difficulty_calculator._create_skills(difficulty_hit_objects)
+    diff_attrs = difficulty_calculator.calculate()
 
-    print(f"\nDiagnostic: difficulty_hit_objects count = {len(difficulty_hit_objects)}")
-    # 打印前5个难度物件的关键信息
-    for i, ho in enumerate(difficulty_hit_objects[:5]):
-        print(f"  DHO {i}: index={ho.index}, start_time={ho.start_time}, delta_time={ho.delta_time}, strain_time={ho.strain_time}")
-        if hasattr(ho, 'distance'):
-            print(f"    distance={getattr(ho, 'distance', None)}, angle_range={getattr(ho, 'angle_range', None)}")
-        if hasattr(ho, 'travel_distance'):
-            print(f"    travel_distance={getattr(ho, 'travel_distance', None)}, lazy_travel_distance={getattr(ho, 'lazy_travel_distance', None)}, travel_time={getattr(ho, 'travel_time', None)}")
+    print(f"\nComputed Difficulty (V2):")
+    print(f"  Star={diff_attrs.star_rating:.3f} Aim={diff_attrs.aim_difficulty:.3f} Speed={diff_attrs.speed_difficulty:.3f} Complexity={diff_attrs.complexity_difficulty:.3f}")
 
-    # 导入评估器用于单独调用
-    from tau.difficulty.evaluators.speedEvaluator import SpeedEvaluator
-    from tau.difficulty.evaluators.complexityEvaluator import ComplexityEvaluator
-    from tau.difficulty.evaluators.aimEvaluator import AimEvaluator
-    from tau.objects import Beat, StrictHardBeat, SliderRepeat, Slider
-
-    import statistics
-
-    # 对前5个对象直接计算评估器输出
-    for i, ho in enumerate(difficulty_hit_objects[:5]):
-        try:
-            sd = SpeedEvaluator.evaluate_difficulty(ho, difficulty_calculator._calculate_great_window(difficulty_calculator.beatmap.difficulty_attributes.get('overall_difficulty', 5.0)))
-        except Exception as e:
-            sd = f"error: {e}"
-        try:
-            cd = ComplexityEvaluator.evaluate_difficulty(ho)
-        except Exception as e:
-            cd = f"error: {e}"
-        try:
-            # AimEvaluator requires angled objects and last; we try-catch
-            last = ho.previous(0)
-            ad = AimEvaluator.evaluate_difficulty(ho, last, [None]) if last is not None else 0
-        except Exception as e:
-            ad = f"error: {e}"
-        print(f"  Eval {i}: Speed={sd}, Complexity={cd}, Aim={ad}")
-
-    # 统计评估器在所有 DHO 上的分布
-    speed_values = []
-    aim_values = []
-    allowed = [Beat, StrictHardBeat, SliderRepeat, Slider]
-    for i, ho in enumerate(difficulty_hit_objects):
-        try:
-            sv = SpeedEvaluator.evaluate_difficulty(ho, difficulty_calculator._calculate_great_window(difficulty_calculator.beatmap.difficulty_attributes.get('overall_difficulty', 5.0)))
-        except Exception:
-            sv = 0.0
-        speed_values.append(sv)
-
-        # 尝试计算 Aim（仅针对角度物件且有 last）
-        try:
-            # Only evaluate Aim for angled difficulty objects with a last angled
-            from tau.difficulty.preprocessing.tauAngledDifficultyHitObject import TauAngledDifficultyHitObject
-            if isinstance(ho, TauAngledDifficultyHitObject) and ho.last_angled is not None:
-                last = ho.last_angled
-                av = AimEvaluator.evaluate_difficulty(ho, last, allowed)
-            else:
-                av = 0.0
-        except Exception:
-            av = 0.0
-        aim_values.append(av)
-
-    def summarize(name, arr):
-        if not arr:
-            print(f"No data for {name}")
-            return
-        arr_sorted = sorted(arr, reverse=True)
-        print(f"\n{name} stats:")
-        print(f"  count: {len(arr)}")
-        print(f"  mean: {statistics.mean(arr):.6f}")
-        print(f"  median: {statistics.median(arr):.6f}")
-        print(f"  max: {max(arr):.6f}")
-        print(f"  top 5: {arr_sorted[:5]}")
-
-    summarize('SpeedEvaluator', speed_values)
-    summarize('AimEvaluator', aim_values)
-
-    for skill in skills:
-        # 通过处理所有难度物件来填充技能的应变峰值
-        for ho in difficulty_hit_objects:
-            skill.process(ho)
-
-    # 输出每个技能的内部信息以便诊断
-    skill_names = ["Aim", "AimNoSliders", "Speed", "Complexity"]
-    for name, skill in zip(skill_names, skills):
-        print(f"\nSkill: {name}")
-        print(f"  strain_peaks count: {len(skill.strain_peaks)}")
-        print(f"  top 5 peaks: {skill.strain_peaks[:5]}")
-        print(f"  difficulty_value(): {skill.difficulty_value()}")
-
-    # 最后使用calculate()得到封装好的属性
-    difficulty_attributes: TauDifficultyAttributes = difficulty_calculator.calculate()
-
-    print("\nCalculated Difficulty Attributes:")
-    print(f"  Star rating: {difficulty_attributes.star_rating}")
-    print(f"  Aim difficulty: {difficulty_attributes.aim_difficulty}")
-    print(f"  Speed difficulty: {difficulty_attributes.speed_difficulty}")
-    print(f"  Complexity difficulty: {difficulty_attributes.complexity_difficulty}")
-    print(f"  AR: {difficulty_attributes.approach_rate}, OD: {difficulty_attributes.overall_difficulty}")
+    difficulty_attributes = diff_attrs
+    print("  (Attributes ready for performance calculation)")
 
     # 构建一个代表SS的分数（满连、无miss、100%准确率）
     score = {

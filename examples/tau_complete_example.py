@@ -6,7 +6,7 @@ Tau模式完整示例
 from src.tau.attributes import BeatmapAttributesBuilder
 from src.tau.objects import Beat, StrictHardBeat, HardBeat
 from src.tau.beatmap import TauBeatmap
-from src.tau.difficulty.calculator import TauDifficultyCalculatorV2
+from src.tau.difficulty import TauDifficultyCalculator
 
 def main():
     # 1. 创建谱面属性
@@ -42,7 +42,7 @@ def main():
     
     # 3. 难度计算
     mods = 0  # 无Mod
-    difficulty_calc = TauDifficultyCalculatorV2(beatmap, mods)
+    difficulty_calc = TauDifficultyCalculator(beatmap, mods)
     difficulty_attributes = difficulty_calc.calculate()
     
     # 4. 输出结果

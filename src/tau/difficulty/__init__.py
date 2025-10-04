@@ -1,7 +1,5 @@
-from .calculator import TauDifficultyCalculatorV2
-from .difficultyCalculator import TauDifficultyCalculator  # 将被弃用
+from .calculator import TauDifficultyCalculatorV2 as TauDifficultyCalculator  # Re-export unified name
 
 __all__ = [
-	'TauDifficultyCalculatorV2',
-	'TauDifficultyCalculator',  # deprecated
+	'TauDifficultyCalculator',
 ]

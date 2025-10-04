@@ -4,6 +4,103 @@ PP and star calculation for the more osu! gamemode, organized in the style of [r
 
 This library provides Python implementations for calculating difficulty and performance attributes for more rulesets of osu!, similar to how rosu-pp works for other osu! gamemodes.
 
+## 安装 (Installation)
+
+PyPI (计划发布)：
+
+```bash
+pip install gu-pp-py-extended
+```
+
+当前仓库本地使用（源码）：
+
+```bash
+git clone <this-repo-url>
+cd gu-pp-py-extened
+pip install -e .[dev]
+```
+
+uv 用户：
+
+```bash
+uv sync --all-extras
+```
+
+## 快速开始 (Quick Start)
+
+计算 Tau 难度与 PP：
+
+```python
+from tau.beatmap import TauBeatmap
+from tau.objects import Beat
+from tau.difficulty import TauDifficultyCalculator
+from tau.performance.tauPerformanceCalculator import TauPerformanceCalculator
+
+# 构造一个极简谱面
+beatmap = TauBeatmap(
+   hit_objects=[
+      Beat(time=0, angle=0.0),
+      Beat(time=500, angle=1.2),
+      Beat(time=900, angle=2.4),
+   ],
+   difficulty_attributes={
+      'approach_rate': 9.0,
+      'overall_difficulty': 8.0,
+      'circle_size': 4.0,
+      'hp_drain_rate': 6.0,
+   }
+)
+
+diff_attrs = TauDifficultyCalculator(beatmap).calculate()
+pp = TauPerformanceCalculator(beatmap, diff_attrs, mods=0, combo=len(beatmap.hit_objects), misses=0, accuracy=98.5).calculate()
+
+print(diff_attrs.star_rating, pp)
+```
+
+## 作为库使用的模块结构
+
+核心入口：
+
+- `tau.difficulty.TauDifficultyCalculator` 计算并返回 `TauDifficultyAttributes`
+- `tau.performance.tauPerformanceCalculator.TauPerformanceCalculator` 计算 PP
+- `tau.mods.TauMods` 位标志枚举 / 整数组合
+- `tau.attributes` 构建与修正 AR/OD/CS/HP 与命中窗口
+
+可选：
+
+- `sentakki.*` 另一个模式的简单难度/PP 逻辑
+
+目录布局遵循 `src/` 包结构，可通过 `from tau ...` 直接导入（安装后）。
+
+## 发布 (Build & Publish)
+
+构建：
+
+```bash
+python -m build
+```
+
+校验分发包：
+
+```bash
+twine check dist/*
+```
+
+上传 PyPI：
+
+```bash
+twine upload dist/*
+```
+
+（需要先在 PyPI 创建账户并配置 API token 到 `~/.pypirc` 或环境变量。）
+
+## 版本策略
+
+当前为 `0.x` 迭代，API 可能发生不兼容修改。移除 legacy tau 难度已在 0.1.0 后续准备中；建议在升级日志中注明 BREAKING CHANGES。
+
+---
+
+
 ## Tau 游戏模式实现
 
 本项目实现了osu!的Tau游戏模式（taulazer/tau）的难度和PP计算系统，接口风格模仿rosu-pp。

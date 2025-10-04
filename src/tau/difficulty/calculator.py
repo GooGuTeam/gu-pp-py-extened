@@ -29,7 +29,7 @@ from .cached import build_cached_properties, TauCachedProperties
 
 DIFFICULTY_MULTIPLIER = 0.0820
 
-class TauDifficultyCalculatorV2:
+class TauDifficultyCalculatorV2:  # Internal class name retained; public import re-exports as TauDifficultyCalculator
     def __init__(self, beatmap: TauBeatmap, mods: int = 0):
         self.beatmap = beatmap
         self.mods = TauMods(mods)

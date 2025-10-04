@@ -4,7 +4,7 @@ Tau完整示例：展示如何使用难度和性能计算器
 
 from .beatmap import TauBeatmap
 from .objects import Beat, Slider, HardBeat, PolarSliderPath, SliderNode
-from .difficulty.calculator import TauDifficultyCalculatorV2
+from .difficulty import TauDifficultyCalculator
 from .performance.tauPerformanceCalculator import TauPerformanceCalculator
 from .mods import TauMods
 
@@ -68,7 +68,7 @@ def main():
     
     # 创建难度计算器（无mod）
     # 使用新版 V2 难度计算器
-    difficulty_calculator = TauDifficultyCalculatorV2(beatmap, 0)
+    difficulty_calculator = TauDifficultyCalculator(beatmap, 0)
     
     # 计算难度
     print("计算谱面难度（无mod）...")
@@ -83,7 +83,7 @@ def main():
     print()
     
     # 创建难度计算器（DT mod）
-    dt_difficulty_calculator = TauDifficultyCalculatorV2(beatmap, TauMods.DOUBLE_TIME)
+    dt_difficulty_calculator = TauDifficultyCalculator(beatmap, TauMods.DOUBLE_TIME)
     
     # 计算DT下的难度
     print("计算谱面难度（DT mod）...")
