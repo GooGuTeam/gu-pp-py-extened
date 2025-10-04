@@ -7,13 +7,13 @@ Aim技能类，用于计算瞄准难度
 
 import math
 from typing import List, Type
-from .tauStrainSkill import TauStrainSkill
+from .tauStrainSkill import BaseStrainSkill
 from ..preprocessing.tauAngledDifficultyHitObject import TauAngledDifficultyHitObject
 from ...mods import TauMods
 from ..evaluators.aimEvaluator import AimEvaluator
 
 
-class Aim(TauStrainSkill):
+class Aim(BaseStrainSkill):
     """Aim技能类"""
     
     def __init__(self, mods: TauMods, allowed_hit_objects: List[Type]):
@@ -27,7 +27,7 @@ class Aim(TauStrainSkill):
         super().__init__(mods)
         self.allowed_hit_objects = allowed_hit_objects
         self.skill_multiplier = 7.4
-        self.strain_decay_base = 0.25
+        self.strain_decay_base = 0.25  # decay base (<1 表示衰减)
     
     def strain_value_of(self, current: 'TauDifficultyHitObject') -> float:
         """
