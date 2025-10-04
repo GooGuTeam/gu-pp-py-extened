@@ -26,6 +26,12 @@ class TauDifficultyCalculator:
             beatmap: Tau谱面对象
             mods: 应用的mods
         """
+        import warnings
+        warnings.warn(
+            'TauDifficultyCalculator (legacy) 将被弃用，请迁移到 TauDifficultyCalculatorV2',
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.beatmap = beatmap
         self.mods = TauMods(mods)
         self.difficulty_multiplier = 0.0820
