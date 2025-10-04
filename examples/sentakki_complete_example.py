@@ -1,88 +1,61 @@
-"""
-Sentakki模式完整示例
-包含谱面创建、难度计算和PP计算
-"""
+"""Sentakki 模式完整示例（严格 PR#701 逻辑移植版）
 
-from src.sentakki.beatmap import SentakkiBeatmap
-from src.sentakki.tap import Tap
-from src.sentakki.hold import Hold
-from src.sentakki.touch import Touch
-from src.sentakki.slide import Slide
-from src.sentakki.difficulty.difficultyCalculator import SentakkiDifficultyCalculator
-from src.sentakki.performance.sentakkiPerformanceCalculator import SentakkiPerformanceCalculator
+当前上游 (sentakki PR #701) 难度逻辑极简：StarRating = Beatmap(StarRating * clockRate) * 1.25；
+无真实技能拆分。因此本示例主要演示：
+ 1. 构建一个简单谱面
+ 2. 应用 Mods (可选) 计算难度
+ 3. 计算性能值
+
+注意：示例中的对象类位于 sentakki.beatmaps.objects 中，而非根级 tap/hold 模块。
+"""
+from sentakki.difficulty.difficultyCalculator import SentakkiDifficultyCalculator
+from sentakki.performance.performanceCalculator import SentakkiPerformanceCalculator
+from sentakki.mods import SentakkiMods
+from sentakki.beatmaps.objects import Tap, Hold, Slide, Touch
+from sentakki.difficulty.beatmap_base import SentakkiBeatmap
+
+
+def build_sample_beatmap() -> SentakkiBeatmap:
+    objs = [
+        Tap(time=0, lane=0),
+        Tap(time=500, lane=3),
+        Hold(time=1000, lane=2, duration=1200),
+        Touch(time=1600, lane=4, x=100, y=120),
+        Slide(time=2200, lane=6),
+    ]
+    star = 2.4
+    max_combo = len(objs)  # 简化：一物件=一连击
+    return SentakkiBeatmap(star_rating=star, max_combo=max_combo, approach_rate=5.0, objects=objs)
+
 
 def main():
-    # 1. 创建谱面
-    beatmap = SentakkiBeatmap()
-    
-    # 添加Tap音符
-    tap1 = Tap()
-    tap1.start_time = 1000.0
-    tap1.lane = 3
-    beatmap.add_hit_object(tap1)
-    
-    tap2 = Tap()
-    tap2.start_time = 1500.0
-    tap2.lane = 5
-    beatmap.add_hit_object(tap2)
-    
-    # 添加Hold音符
-    hold = Hold()
-    hold.start_time = 2000.0
-    hold.lane = 1
-    hold.duration = 1000.0
-    beatmap.add_hit_object(hold)
-    
-    # 添加Touch音符
-    touch = Touch()
-    touch.start_time = 3000.0
-    touch.position = (200.0, 150.0)
-    beatmap.add_hit_object(touch)
-    
-    # 添加Slide音符
-    slide = Slide()
-    slide.start_time = 4000.0
-    slide.lane = 7
-    slide.duration = 1500.0
-    beatmap.add_hit_object(slide)
-    slide.start_time = 4000.0
-    slide.lane = 7
-    slide.duration = 1500.0
-    beatmap.add_hit_object(slide)
+    beatmap = build_sample_beatmap()
 
-    # 2. 难度计算
-    difficulty_calc = SentakkiDifficultyCalculator(beatmap)
-    difficulty_attributes = difficulty_calc.calculate()
-    
-    # 3. PP计算
-    performance_calc = SentakkiPerformanceCalculator()
-    # 创建分数信息字典
-    score_info = {
-        'accuracy': 95.0,  # 准确率
-        'count_miss': 0,   # Miss数
-        'max_combo': len(beatmap.hit_objects),  # 最大连击数
-        'score': 950000    # 分数
+    mods = SentakkiMods.DOUBLE_TIME | SentakkiMods.HARD_ROCK  # 演示可叠加（时钟+难度）
+    calc = SentakkiDifficultyCalculator(beatmap, int(mods))
+    diff = calc.calculate()
+
+    # 构造成绩：accuracy 期望 0~1
+    score = {
+        'accuracy': 0.985,
+        'max_combo': beatmap.max_combo,
+        'statistics': {
+            'miss': 0,
+        }
     }
-    
-    result = performance_calc.calculate(score_info, difficulty_attributes)
-    
-    # 4. 输出结果
-    print("\nSentakki模式谱面信息:")
-    print(f"谱面物件数: {len(beatmap.hit_objects)}")
-    
-    print("\n谱面组成:")
-    print(f"Tap数量: 2")
-    print(f"Hold数量: 1")
-    print(f"Touch数量: 1")
-    print(f"Slide数量: 1")
-    
-    print("\n难度属性:")
-    print(f"星级: {difficulty_attributes.star_rating:.2f}")
-    
-    print("\nPP计算结果:")
-    print(f"总PP: {result.get('total', 0):.2f}")
-    print(f"分数: {score_info['score']}")
-    print(f"准确率: {score_info['accuracy']}%")
+    perf_calc = SentakkiPerformanceCalculator()
+    perf = perf_calc.calculate(score, diff)
 
-if __name__ == "__main__":
+    print("=== Sentakki 示例 ===")
+    print(f"Mods: {mods}")
+    print(f"对象数量: {len(beatmap.objects)}  (MaxCombo={beatmap.max_combo})")
+    print(f"星级: {diff.star_rating:.3f}  (clock_rate={diff.clock_rate})")
+    print(f"AR(带mods): {diff.approach_rate:.2f}")
+    print("-- 性能 --")
+    print(f"Base PP: {perf.base_pp:.4f}")
+    print(f"Length Bonus: {perf.length_bonus:.4f}")
+    print(f"Total PP: {perf.total:.4f}")
+
+
+if __name__ == "__main__":  # pragma: no cover
     main()
