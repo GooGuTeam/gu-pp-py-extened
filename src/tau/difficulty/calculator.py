@@ -25,7 +25,6 @@ from .preprocessing.tauAngledDifficultyHitObject import TauAngledDifficultyHitOb
 from .skills.aim import Aim
 from .skills.speed import Speed
 from .skills.complexity import Complexity
-from .evaluators.complexityEvaluator import ComplexityEvaluator
 from .cached import build_cached_properties, TauCachedProperties
 
 DIFFICULTY_MULTIPLIER = 0.0820
@@ -34,7 +33,6 @@ class TauDifficultyCalculatorV2:
     def __init__(self, beatmap: TauBeatmap, mods: int = 0):
         self.beatmap = beatmap
         self.mods = TauMods(mods)
-        self._complexity_evaluator = ComplexityEvaluator()  # for potential explicit resets later
 
     # Public API similar to previous calculate()
     def calculate(self) -> TauDifficultyAttributes:
@@ -42,8 +40,7 @@ class TauDifficultyCalculatorV2:
             return TauDifficultyAttributes()
 
         clock_rate = self._get_clock_rate()
-        # reset stateful evaluators
-        self._complexity_evaluator.reset()
+    # ComplexityEvaluator 由 Complexity 技能内部自管理实例，无需外部 reset
         # Build cached properties (future use by evaluators). Currently non-intrusive.
         self._cached = build_cached_properties(
             self.beatmap.hit_objects,
