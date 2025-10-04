@@ -126,7 +126,15 @@ class ComplexityEvaluator:
             if isinstance(first_nested, SliderHardBeat):
                 return HitType.HARD_BEAT
         if isinstance(base_object, AngledTauHitObject):
-            return HitType.ANGLED
+            # 角度阈值分类：较大角度与较小角度视为不同类型，制造模式切换
+            try:
+                angle_val = float(getattr(base_object, 'angle', 0.0)) % 360
+            except Exception:
+                angle_val = 0.0
+            # 阈值 45°：>=45 归为 ANGLED，<45 归为 HARD_BEAT，以便小幅往返保持单类型
+            if angle_val >= 45.0:
+                return HitType.ANGLED
+            return HitType.HARD_BEAT
         return HitType.HARD_BEAT
 
 
